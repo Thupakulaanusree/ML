@@ -1,0 +1,119 @@
+import csv
+import math
+import random
+import matplotlib.pyplot as plt
+
+# Load the Iris dataset without using any external libraries
+def load_data(file_path):
+    data = []
+    with open(file_path, 'r') as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header
+        for row in reader:
+            row[:-1] = [float(i) for i in row[:-1]]  # Convert features to float
+            if row[-1] == "Iris-setosa":
+                row[-1] = 0
+            elif row[-1] == "Iris-versicolor":
+                row[-1] = 1
+            elif row[-1] == "Iris-virginica":
+                row[-1] = 2
+            data.append(row)
+    return data
+
+# Split the data into training and test sets
+def split_data(data, train_ratio=0.7):
+    random.shuffle(data)
+    train_size = int(train_ratio * len(data))
+    return data[:train_size], data[train_size:]
+
+# Calculate Euclidean distance between two points
+def euclidean_distance(point1, point2):
+    distance = 0.0
+    for i in range(len(point1) - 1):  # Exclude the label
+        distance += (point1[i] - point2[i]) ** 2
+    return math.sqrt(distance)
+
+# Implement the K-NN algorithm
+def knn(train_data, test_point, k):
+    distances = []
+    for train_point in train_data:
+        distance = euclidean_distance(train_point, test_point)
+        distances.append((distance, train_point[-1]))  # (distance, label)
+    distances.sort(key=lambda x: x[0])
+    neighbors = distances[:k]  # Get K nearest neighbors
+    # Get the most frequent class among the neighbors
+    labels = [neighbor[1] for neighbor in neighbors]
+    most_common = max(set(labels), key=labels.count)
+    return most_common
+
+# Predict labels for the test data
+def predict(train_data, test_data, k):
+    predictions = []
+    for test_point in test_data:
+        predictions.append(knn(train_data, test_point, k))
+    return predictions
+
+# Calculate accuracy
+def accuracy(predictions, actual_labels):
+    correct = 0
+    for pred, actual in zip(predictions, actual_labels):
+        if pred == actual:
+            correct += 1
+    return correct / len(actual_labels)
+
+# Confusion Matrix
+def confusion_matrix(predictions, actual_labels, num_classes):
+    matrix = [[0 for _ in range(num_classes)] for _ in range(num_classes)]
+    for pred, actual in zip(predictions, actual_labels):
+        matrix[actual][pred] += 1
+    return matrix
+
+# Plot accuracy for different values of K
+def plot_k_vs_accuracy(train_data, test_data, max_k):
+    k_values = list(range(1, max_k + 1))
+    accuracies = []
+    actual_labels = [test[-1] for test in test_data]
+    
+    for k in k_values:
+        predictions = predict(train_data, test_data, k)
+        acc = accuracy(predictions, actual_labels)
+        accuracies.append(acc)
+    
+    plt.plot(k_values, accuracies)
+    plt.xlabel('K')
+    plt.ylabel('Accuracy')
+    plt.title('K vs Accuracy')
+    plt.show()
+    
+    best_k = k_values[accuracies.index(max(accuracies))]
+    print(f"Best K: {best_k} with Accuracy: {max(accuracies):.4f}")
+    return best_k
+
+# Main program
+file_path = '/content/Iris.csv'  # Use the actual path for your CSV file
+
+# Step a: Load the dataset
+iris_data = load_data(file_path)
+
+# Step b: Split the dataset into training and test sets
+train_data, test_data = split_data(iris_data, train_ratio=0.7)
+
+# Step c: Test the model, calculate accuracy, and generate the confusion matrix
+k = 3  # You can change this value for different tests
+predictions = predict(train_data, test_data, k)
+actual_labels = [test[-1] for test in test_data]
+
+# Calculate accuracy
+acc = accuracy(predictions, actual_labels)
+print(f"Accuracy with K={k}: {acc:.4f}")
+
+# Confusion Matrix
+num_classes = 3  # There are 3 species in the dataset
+cm = confusion_matrix(predictions, actual_labels, num_classes)
+
+print("Confusion Matrix:")
+for row in cm:
+    print(row)
+
+# Step d: Plot accuracy for different values of K and find the best K
+best_k = plot_k_vs_accuracy(train_data, test_data, max_k=20)
